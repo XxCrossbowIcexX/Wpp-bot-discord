@@ -26,7 +26,7 @@ client.once('ready', () => {
 
 // Comando para mostrar los grupos guardados
 client.on('messageCreate', async (message) => {
-    if (message.content.startsWith("!wpp")) {
+    if (message.content.toLowerCase().startsWith("!wpp")) {
         const args = message.content.split(" ");
         const groupId = args[1]; // El groupId se pasa como segundo parámetro
 
@@ -65,22 +65,24 @@ client.on('messageCreate', async (message) => {
     }
 });
 
+function guardarGrupos() {
+    fs.writeFileSync(gruposFile, JSON.stringify(grupos, null, 2));
+}
 
-
-// Comando para agregar un grupo (solo admins)
+// Comando para agregar un grupo (ordenado por ID) solo admins
 client.on('messageCreate', async (message) => {
-    if (!message.content.startsWith("!addgrupo ")) return;
-
+    if (!message.content.startsWith("!agregarGrupo ")) return;
+    
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         return message.reply("❌ No tienes permisos para agregar grupos.");
     }
 
     const args = message.content.split(" ");
-    const groupId = args[1];
+    const groupId = parseInt(args[1]);
     const link = args[2];
 
-    if (!groupId || !link) {
-        return message.reply("⚠️ Debes ingresar un identificador de grupo y un enlace de WhatsApp.");
+    if (!groupId || isNaN(groupId) || !link) {
+        return message.reply("⚠️ Debes ingresar un número de grupo y un enlace de WhatsApp.");
     }
 
     if (!link.startsWith("https://chat.whatsapp.com/")) {
@@ -91,13 +93,86 @@ client.on('messageCreate', async (message) => {
         grupos[message.guild.id] = [];
     }
 
-    // Guardar el grupo con el formato "Grupo - <ID>"
-    grupos[message.guild.id].push({ id: groupId, link });
+    // Verificar si el grupo ya existe
+    if (grupos[message.guild.id].some(g => g.id === groupId)) {
+        return message.reply("⚠️ Este grupo ya está registrado.");
+    }
 
-    // Guardar los grupos en el archivo JSON
-    fs.writeFileSync(gruposFile, JSON.stringify(grupos, null, 2));
+    // Agregar el grupo y ordenar la lista
+    grupos[message.guild.id].push({ id: groupId, link });
+    grupos[message.guild.id].sort((a, b) => a.id - b.id); // Ordenar por ID
+
+    guardarGrupos(); // Guardar cambios
 
     message.reply(`✅ Grupo ${groupId} agregado correctamente.`);
+});
+
+// Comando para eliminar un grupo
+client.on('messageCreate', async (message) => {
+    if (!message.content.startsWith("!eliminarGrupo ")) return;
+
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply("❌ No tienes permisos para eliminar grupos.");
+    }
+
+    const args = message.content.split(" ");
+    const groupId = parseInt(args[1]);
+
+    if (!groupId || isNaN(groupId)) {
+        return message.reply("⚠️ Debes ingresar un número de grupo válido.");
+    }
+
+    if (!grupos[message.guild.id] || grupos[message.guild.id].length === 0) {
+        return message.reply("⚠️ No hay grupos registrados.");
+    }
+
+    // Filtrar y eliminar el grupo
+    const grupoEliminado = grupos[message.guild.id].some(g => g.id === groupId);
+    grupos[message.guild.id] = grupos[message.guild.id].filter(g => g.id !== groupId);
+
+    if (!grupoEliminado) {
+        return message.reply(`⚠️ No se encontró un grupo con el ID ${groupId}.`);
+    }
+
+    guardarGrupos(); // Guardar cambios
+
+    message.reply(`✅ Grupo ${groupId} eliminado correctamente.`);
+});
+
+// Comando para editar el link de un grupo
+client.on('messageCreate', async (message) => {
+    if (!message.content.startsWith("!editarGrupo ")) return;
+
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply("❌ No tienes permisos para editar grupos.");
+    }
+
+    const args = message.content.split(" ");
+    const groupId = parseInt(args[1]);
+    const newLink = args[2];
+
+    if (!groupId || isNaN(groupId) || !newLink) {
+        return message.reply("⚠️ Debes ingresar un número de grupo y un nuevo enlace de WhatsApp.");
+    }
+
+    if (!newLink.startsWith("https://chat.whatsapp.com/")) {
+        return message.reply("⚠️ Debes ingresar un enlace válido de WhatsApp.");
+    }
+
+    if (!grupos[message.guild.id] || grupos[message.guild.id].length === 0) {
+        return message.reply("⚠️ No hay grupos registrados.");
+    }
+
+    const grupo = grupos[message.guild.id].find(g => g.id === groupId);
+    if (!grupo) {
+        return message.reply(`⚠️ No se encontró un grupo con el ID ${groupId}.`);
+    }
+
+    // Editar el enlace del grupo
+    grupo.link = newLink;
+    guardarGrupos(); // Guardar cambios
+
+    message.reply(`✅ Grupo ${groupId} actualizado correctamente.`);
 });
 
 // Iniciar el bot con el token del archivo .env

@@ -42,7 +42,8 @@ client.on('messageCreate', async (message) => {
 
         // Si se pasa un groupId, buscar ese grupo específico
         if (groupId) {
-            const grupo = grupos[message.guild.id].find(g => g.id === groupId);
+            const grupo = grupos[message.guild.id].find(g => g.id == groupId);
+            console.log(grupo);
             if (grupo) {
                 // Mostrar solo el grupo encontrado
                 embed.addFields({ name: `[Grupo - ${grupo.id}]`, value: `[Únete aquí](${grupo.link})`, inline: false });

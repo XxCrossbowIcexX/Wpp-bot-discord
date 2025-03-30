@@ -30,6 +30,7 @@ client.on('messageCreate', async (message) => {
 
         const embed = new EmbedBuilder()
             .setTitle("Grupos de WhatsApp JAP 2025")
+            .setDescription("Haz clic en los enlaces para unirte a los grupos de WhatsApp.")
             .setColor(0x25D366);
 
         // Si el usuario especificó un ID, mostrar solo ese grupo
